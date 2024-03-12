@@ -1,4 +1,5 @@
 import os
+import subprocess
 import multiprocessing
 from pathlib import Path
 from PIL import Image
@@ -146,13 +147,23 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, thread_
 if __name__ in "__main__":
     VIDEO = "test.MP4"
 
+    # 获取视频帧率
+    command = f"ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 {VIDEO}"
+
+    # 使用Popen运行命令
+    process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    output, error = process.communicate()
+    rate, sec = output.decode('utf-8').split("/")
+
+    VIDEO_RATE = int(int(rate) / int(sec))
+    print(VIDEO_RATE)
+
     installed_at = Path(__file__).resolve().parent
     tmp_frames_folder = f"{installed_at}/tmp_frames"
     out_frames_folder = f"{installed_at}/out_frames"
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-
     image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder)
-    print(f"所有帧均处理完成！")
 
-    os.system(f"ffmpeg -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -r 23.98 -pix_fmt yuv420p output_{VIDEO}")
+    os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p output_{VIDEO}")
+
