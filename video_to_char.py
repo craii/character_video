@@ -25,7 +25,7 @@ def draw_text(text: str,
               text_color: Union[str, tuple],
               text_size: int,
               picture: Picture,
-              location: tuple, font: str = "w6.ttf") :
+              location: tuple, font: str = "w6.ttf"):
     font = ImageFont.truetype(font, text_size)
     draw = ImageDraw.Draw(picture)
     draw.text(location, text, fill=text_color, font=font)
@@ -67,7 +67,7 @@ def transfer_to_text(picture: str,
                      out_picture: str,
                      block_size: int = 10,
                      bg_color: str = "white",
-                     text_color: str = "black",
+                     text_color: str = "auto",
                      width: int = 0,
                      height: int = 0,
                      mosaic: bool = False,
@@ -91,23 +91,28 @@ def transfer_to_text(picture: str,
     infos = list()
     for i in range(actual_resized_height):
         for j in range(actual_resized_width):
-            text = get_char(*pixelate_image.getpixel((j, i)))
+            pixel_color = pixelate_image.getpixel((j, i))
+            text = get_char(*pixel_color)
             # text = get_char(*pixelate_image[j, i])
-            infos.append(((i, j), text))
+            infos.append(((i, j), text, pixel_color))
 
     new_image = Image.new("RGB", (new_width * text_size, new_height * text_size), color=bg_color)
     for info in infos:
-        coordinate, text = info
-        draw_text(text, text_color, text_size, picture=new_image, location=(coordinate[1] * text_size, coordinate[0] * text_size))
+        coordinate, text, color = info
+        _color = color if text_color == "auto" else text_color
+        draw_text(text=text, text_color=_color, text_size=text_size, picture=new_image, location=(coordinate[1] * text_size, coordinate[0] * text_size))
     new_image.save(f"{out_picture}")
 
 
 class WorkerProcess(multiprocessing.Process):
-    def __init__(self, image_queue: multiprocessing.Queue, input_folder: str, output_folder: str):
+    def __init__(self, image_queue: multiprocessing.Queue, input_folder: str, output_folder: str, text_color: str = "auto", bg_color: str="white", mosaic: bool = False):
         super().__init__()
         self.image_queue = image_queue
         self.input_folder = input_folder
         self.output_folder = output_folder
+        self.text_color = text_color
+        self.mosaic = mosaic
+        self.bg_color = bg_color
 
     def run(self):
         while True:
@@ -117,11 +122,17 @@ class WorkerProcess(multiprocessing.Process):
             if image_path is None:
                 break
             # 处理图片
-            transfer_to_text(picture=f"{self.input_folder}/{image_path}", out_picture=f"{self.output_folder}/out_{image_path}", text_size=10, block_size=20, mosaic=False)
+            transfer_to_text(picture=f"{self.input_folder}/{image_path}",
+                             out_picture=f"{self.output_folder}/out_{image_path}",
+                             text_size=10,
+                             block_size=20,
+                             text_color=self.text_color,
+                             bg_color=self.bg_color,
+                             mosaic=self.mosaic)
             print(f"{self.input_folder}/{image_path} 处理完成！ -----> {self.output_folder}/out_{image_path}")
 
 
-def image_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10):
+def image_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False):
     # 创建一个队列
     image_queue = multiprocessing.Queue()
     for frame in sorted([file for file in os.listdir(input_folder) if file.endswith("jpg")]):
@@ -131,7 +142,7 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, process
     num_worker_processes = process_num
     transfer_processes = []
     for i in range(num_worker_processes):
-        _process = WorkerProcess(image_queue, input_folder, output_folder)
+        _process = WorkerProcess(image_queue, input_folder, output_folder, text_color=text_color, bg_color=bg_color, mosaic=mosaic)
         _process.start()
         transfer_processes.append(_process)
 
@@ -145,8 +156,11 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, process
 
 
 if __name__ in "__main__":
-    VIDEO = "IMG_3601.MOV"
-    PROCESS_NUM = 6
+    VIDEO = "a.MP4"
+    TEXT_COLOR = "auto"  #如果是auto，则自动计算颜色，与原视频类似
+    BG_COLOR = "black"
+    MOSAIC = False
+    PROCESS_NUM = 5
     DELETE_FRAMES_AFTER_PROCESSED = True
 
     # 获取视频帧率
@@ -169,7 +183,12 @@ if __name__ in "__main__":
         os.mkdir(out_frames_folder)
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-    image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder, process_num=PROCESS_NUM)
+    image_transfer_multiprocessor(input_folder=tmp_frames_folder,
+                                  output_folder=out_frames_folder,
+                                  process_num=PROCESS_NUM,
+                                  text_color=TEXT_COLOR,
+                                  bg_color=BG_COLOR,
+                                  mosaic=MOSAIC)
 
     os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p output_{VIDEO}")
 
