@@ -121,21 +121,21 @@ class WorkerProcess(multiprocessing.Process):
             print(f"{self.input_folder}/{image_path} 处理完成！ -----> {self.output_folder}/out_{image_path}")
 
 
-def image_transfer_multiprocessor(input_folder: str, output_folder: str, thread_num: int = 10):
+def image_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10):
     # 创建一个队列
     image_queue = multiprocessing.Queue()
     for frame in sorted([file for file in os.listdir(input_folder) if file.endswith("jpg")]):
         image_queue.put(frame)
 
     # 创建并启动进程
-    num_worker_threads = thread_num
+    num_worker_processes = process_num
     transfer_processes = []
-    for i in range(num_worker_threads):
+    for i in range(num_worker_processes):
         _process = WorkerProcess(image_queue, input_folder, output_folder)
         _process.start()
         transfer_processes.append(_process)
 
-    for i in range(num_worker_threads):
+    for i in range(num_worker_processes):
         image_queue.put(None)
 
     for _process in transfer_processes:
@@ -145,8 +145,8 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, thread_
 
 
 if __name__ in "__main__":
-    VIDEO = "a.MP4"
-    PROCESS_NUM = 15
+    VIDEO = "IMG_3601.MOV"
+    PROCESS_NUM = 6
     DELETE_FRAMES_AFTER_PROCESSED = True
 
     # 获取视频帧率
@@ -169,10 +169,13 @@ if __name__ in "__main__":
         os.mkdir(out_frames_folder)
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-    image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder, thread_num=PROCESS_NUM)
+    image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder, process_num=PROCESS_NUM)
 
     os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p output_{VIDEO}")
 
     if DELETE_FRAMES_AFTER_PROCESSED:
-        [i for i in map(lambda x: os.remove(x), [f"{tmp_frames_folder}/{file}" for file in os.listdir(tmp_frames_folder)])]
-        [j for j in map(lambda x: os.remove(x), [f"{out_frames_folder}/{file}" for file in os.listdir(out_frames_folder)])]
+        for tmp_frame in [f"{tmp_frames_folder}/{file}" for file in os.listdir(tmp_frames_folder)]:
+            os.remove(tmp_frame)
+
+        for out_frame in [f"{out_frames_folder}/{file}" for file in os.listdir(out_frames_folder)]:
+            os.remove(out_frame)
