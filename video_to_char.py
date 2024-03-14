@@ -146,6 +146,8 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, thread_
 
 if __name__ in "__main__":
     VIDEO = "a.MP4"
+    PROCESS_NUM = 15
+    DELETE_FRAMES_AFTER_PROCESSED = True
 
     # 获取视频帧率
     command = f"ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 {VIDEO}"
@@ -167,6 +169,10 @@ if __name__ in "__main__":
         os.mkdir(out_frames_folder)
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-    image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder)
+    image_transfer_multiprocessor(input_folder=tmp_frames_folder, output_folder=out_frames_folder, thread_num=PROCESS_NUM)
 
     os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p output_{VIDEO}")
+
+    if DELETE_FRAMES_AFTER_PROCESSED:
+        [i for i in map(lambda x: os.remove(x), [f"{tmp_frames_folder}/{file}" for file in os.listdir(tmp_frames_folder)])]
+        [j for j in map(lambda x: os.remove(x), [f"{out_frames_folder}/{file}" for file in os.listdir(out_frames_folder)])]
