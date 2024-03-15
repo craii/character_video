@@ -11,7 +11,7 @@ FRAME = NewType("FRAME", Image)
 ascii_char = list('''$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. ''')
 
 
-def get_char(r, g, b, alpha=256):
+def get_char(r, g, b, alpha=256) -> str:
     if alpha == 0:
         return ' '
     length = len(ascii_char)
@@ -25,30 +25,30 @@ def draw_text(text: str,
               text_color: Union[str, tuple],
               text_size: int,
               frame: FRAME,
-              location: tuple, font: str = "w6.ttf"):
+              location: tuple, font: str = "w6.ttf") -> None:
     font = ImageFont.truetype(font, text_size)
     draw = ImageDraw.Draw(frame)
     draw.text(location, text, fill=text_color, font=font)
 
 
-def pixelate_image_info(picture: FRAME, block_size: int) -> Tuple[FRAME, list]:
+def pixelate_image_info(frame: FRAME, block_size: int) -> Tuple[FRAME, list]:
     # 确保块大小是整数且大于0
     block_size = int(block_size)
     if block_size <= 0:
         raise ValueError("block_size must be a positive integer")
 
     # 调整图片大小，使其成为块的整数倍
-    width, height = picture.size
+    width, height = frame.size
     new_width = int(width / block_size) * block_size
     new_height = int(height / block_size) * block_size
-    picture = picture.resize((new_width, new_height))
+    frame = frame.resize((new_width, new_height))
 
     # 将图片分割成块
     coordinate_colors = list()
-    pixels = picture.load()
+    pixels = frame.load()
     for i in range(0, new_width, block_size):
         for j in range(0, new_height, block_size):
-            block = picture.crop((i, j, i + block_size, j + block_size))
+            block = frame.crop((i, j, i + block_size, j + block_size))
 
             # 计算块的平均颜色
             avg_color = block.resize((1, 1)).getpixel((0, 0))
@@ -60,10 +60,10 @@ def pixelate_image_info(picture: FRAME, block_size: int) -> Tuple[FRAME, list]:
                 for y in range(j, j + block_size):
                     pixels[x, y] = avg_color
 
-    return picture, coordinate_colors
+    return frame, coordinate_colors
 
 
-def transfer_to_text(picture: str,
+def transfer_to_text(frame_src: str,
                      out_picture: str,
                      block_size: int = 10,
                      bg_color: str = "white",
@@ -73,7 +73,7 @@ def transfer_to_text(picture: str,
                      mosaic: bool = False,
                      text_size: int = 5) -> None:
 
-    im = Image.open(picture)
+    im = Image.open(frame_src)
 
     pixelate_image = pixelate_image_info(im, block_size)[0] if mosaic else im
 
@@ -122,7 +122,7 @@ class WorkerProcess(multiprocessing.Process):
             if image_path is None:
                 break
             # 处理图片
-            transfer_to_text(picture=f"{self.input_folder}/{image_path}",
+            transfer_to_text(frame_src=f"{self.input_folder}/{image_path}",
                              out_picture=f"{self.output_folder}/out_{image_path}",
                              text_size=10,
                              block_size=20,
@@ -132,7 +132,7 @@ class WorkerProcess(multiprocessing.Process):
             print(f"{self.input_folder}/{image_path} 处理完成！ -----> {self.output_folder}/out_{image_path}")
 
 
-def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False):
+def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False) -> None:
     # 创建一个队列
     image_queue = multiprocessing.Queue()
     for frame in sorted([file for file in os.listdir(input_folder) if file.endswith("jpg")]):
@@ -157,10 +157,10 @@ def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process
 
 if __name__ in "__main__":
     VIDEO = "a.MP4"
-    TEXT_COLOR = "auto"  #如果是auto，则自动计算颜色，与原视频类似
+    TEXT_COLOR = "auto"  # 如果是auto，则自动计算颜色，提取自原视频
     BG_COLOR = "white"
     MOSAIC = False
-    PROCESS_NUM = 6
+    PROCESS_NUM = 10
     DELETE_FRAMES_AFTER_PROCESSED = True
 
     # 获取视频帧率
