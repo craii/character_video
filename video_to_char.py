@@ -6,7 +6,7 @@ from PIL import Image
 from PIL import ImageFont, ImageDraw
 from typing import NewType, Union, Tuple
 
-Picture = NewType("Picture", Image)
+FRAME = NewType("FRAME", Image)
 
 ascii_char = list('''$@B%8&WM#*oahkbdpqwmZO0QLCJUYXzcvunxrjft/\|()1{}[]?-_+~<>i!lI;:,\"^`'. ''')
 
@@ -24,14 +24,14 @@ def get_char(r, g, b, alpha=256):
 def draw_text(text: str,
               text_color: Union[str, tuple],
               text_size: int,
-              picture: Picture,
+              frame: FRAME,
               location: tuple, font: str = "w6.ttf"):
     font = ImageFont.truetype(font, text_size)
-    draw = ImageDraw.Draw(picture)
+    draw = ImageDraw.Draw(frame)
     draw.text(location, text, fill=text_color, font=font)
 
 
-def pixelate_image_info(picture: Picture, block_size: int) -> Tuple[Picture, list]:
+def pixelate_image_info(picture: FRAME, block_size: int) -> Tuple[FRAME, list]:
     # 确保块大小是整数且大于0
     block_size = int(block_size)
     if block_size <= 0:
@@ -100,7 +100,7 @@ def transfer_to_text(picture: str,
     for info in infos:
         coordinate, text, color = info
         _color = color if text_color == "auto" else text_color
-        draw_text(text=text, text_color=_color, text_size=text_size, picture=new_image, location=(coordinate[1] * text_size, coordinate[0] * text_size))
+        draw_text(text=text, text_color=_color, text_size=text_size, frame=new_image, location=(coordinate[1] * text_size, coordinate[0] * text_size))
     new_image.save(f"{out_picture}")
 
 
@@ -132,7 +132,7 @@ class WorkerProcess(multiprocessing.Process):
             print(f"{self.input_folder}/{image_path} 处理完成！ -----> {self.output_folder}/out_{image_path}")
 
 
-def image_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False):
+def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False):
     # 创建一个队列
     image_queue = multiprocessing.Queue()
     for frame in sorted([file for file in os.listdir(input_folder) if file.endswith("jpg")]):
@@ -158,9 +158,9 @@ def image_transfer_multiprocessor(input_folder: str, output_folder: str, process
 if __name__ in "__main__":
     VIDEO = "a.MP4"
     TEXT_COLOR = "auto"  #如果是auto，则自动计算颜色，与原视频类似
-    BG_COLOR = "black"
+    BG_COLOR = "white"
     MOSAIC = False
-    PROCESS_NUM = 5
+    PROCESS_NUM = 6
     DELETE_FRAMES_AFTER_PROCESSED = True
 
     # 获取视频帧率
@@ -183,7 +183,7 @@ if __name__ in "__main__":
         os.mkdir(out_frames_folder)
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-    image_transfer_multiprocessor(input_folder=tmp_frames_folder,
+    frame_transfer_multiprocessor(input_folder=tmp_frames_folder,
                                   output_folder=out_frames_folder,
                                   process_num=PROCESS_NUM,
                                   text_color=TEXT_COLOR,
