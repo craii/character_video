@@ -1,10 +1,11 @@
 import os
+import argparse
 import subprocess
 import multiprocessing
 from pathlib import Path
 from PIL import Image
 from PIL import ImageFont, ImageDraw
-from typing import NewType, Union, Tuple
+from typing import NewType, Union, Tuple, List
 
 FRAME = NewType("FRAME", Image)
 
@@ -105,7 +106,15 @@ def transfer_to_text(frame_src: str,
 
 
 class WorkerProcess(multiprocessing.Process):
-    def __init__(self, image_queue: multiprocessing.Queue, input_folder: str, output_folder: str, text_color: str = "auto", bg_color: str="white", mosaic: bool = False):
+
+    def __init__(self,
+                 image_queue: multiprocessing.Queue,
+                 input_folder: str,
+                 output_folder: str,
+                 text_color: str = "auto",
+                 bg_color: str="white",
+                 mosaic: bool = False):
+
         super().__init__()
         self.image_queue = image_queue
         self.input_folder = input_folder
@@ -132,7 +141,12 @@ class WorkerProcess(multiprocessing.Process):
             print(f"{self.input_folder}/{image_path} 处理完成！ -----> {self.output_folder}/out_{image_path}")
 
 
-def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process_num: int = 10, text_color: str = "auto", bg_color="white", mosaic: bool = False) -> None:
+def frame_transfer_multiprocessor(input_folder: str,
+                                  output_folder: str,
+                                  process_num: int = 10,
+                                  text_color: str = "auto",
+                                  bg_color="white",
+                                  mosaic: bool = False) -> List[multiprocessing.Process]:
     # 创建一个队列
     image_queue = multiprocessing.Queue()
     for frame in sorted([file for file in os.listdir(input_folder) if file.endswith("jpg")]):
@@ -153,15 +167,32 @@ def frame_transfer_multiprocessor(input_folder: str, output_folder: str, process
         _process.join()
 
     print("All images have been processed.")
+    return transfer_processes
 
 
 if __name__ in "__main__":
-    VIDEO = "a.MP4"
-    TEXT_COLOR = "auto"  # 如果是auto，则自动计算颜色，提取自原视频
-    BG_COLOR = "white"
-    MOSAIC = False
-    PROCESS_NUM = 10
-    DELETE_FRAMES_AFTER_PROCESSED = True
+    parser = argparse.ArgumentParser(description="Description of your script")
+
+    parser.add_argument("--VIDEO", type=str, help="Path to the video file")
+    parser.add_argument("--TEXT_COLOR", type=str, default="auto",
+                        help="Color of the text overlay. If 'auto', it will be automatically calculated.")
+    parser.add_argument("--BG_COLOR", type=str, default="black",
+                        help="Background color")
+    parser.add_argument("--MOSAIC", type=str, help="Whether to apply mosaic effect")
+    parser.add_argument("--PROCESS_NUM", type=int, default=10, help="Number of processes to use")
+    parser.add_argument("--DELETE_FRAMES_AFTER_PROCESSED", type=str,
+                        help="Whether to delete frames after processing")
+
+    args = parser.parse_args()
+
+    video_path = Path(args.VIDEO).resolve()
+
+    VIDEO = f"{video_path}"
+    TEXT_COLOR = args.TEXT_COLOR  # 如果是auto，则自动计算颜色，提取自原视频
+    BG_COLOR = args.BG_COLOR
+    MOSAIC = True if args.MOSAIC == "yes" else False
+    PROCESS_NUM = args.PROCESS_NUM
+    DELETE_FRAMES_AFTER_PROCESSED = True if args.DELETE_FRAMES_AFTER_PROCESSED == "yes" else False
 
     # 获取视频帧率
     command = f"ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 {VIDEO}"
@@ -183,14 +214,14 @@ if __name__ in "__main__":
         os.mkdir(out_frames_folder)
 
     os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
-    frame_transfer_multiprocessor(input_folder=tmp_frames_folder,
-                                  output_folder=out_frames_folder,
-                                  process_num=PROCESS_NUM,
-                                  text_color=TEXT_COLOR,
-                                  bg_color=BG_COLOR,
-                                  mosaic=MOSAIC)
+    processors = frame_transfer_multiprocessor(input_folder=tmp_frames_folder,
+                                               output_folder=out_frames_folder,
+                                               process_num=PROCESS_NUM,
+                                               text_color=TEXT_COLOR,
+                                               bg_color=BG_COLOR,
+                                               mosaic=MOSAIC)
 
-    os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p output_{VIDEO}")
+    os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p {video_path.parent}/out_{video_path.name}")
 
     if DELETE_FRAMES_AFTER_PROCESSED:
         for tmp_frame in [f"{tmp_frames_folder}/{file}" for file in os.listdir(tmp_frames_folder)]:
