@@ -3,6 +3,8 @@ import argparse
 import subprocess
 import multiprocessing
 from pathlib import Path
+
+import psutil
 from PIL import Image
 from PIL import ImageFont, ImageDraw
 from typing import NewType, Union, Tuple, List
@@ -185,6 +187,7 @@ if __name__ in "__main__":
 
     args = parser.parse_args()
 
+
     video_path = Path(args.VIDEO).resolve()
 
     VIDEO = f"{video_path}"
@@ -194,8 +197,11 @@ if __name__ in "__main__":
     PROCESS_NUM = args.PROCESS_NUM
     DELETE_FRAMES_AFTER_PROCESSED = True if args.DELETE_FRAMES_AFTER_PROCESSED == "yes" else False
 
+    installed_at = Path(__file__).resolve().parent
+
     # 获取视频帧率
-    command = f"ffprobe -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 {VIDEO}"
+    ffprobe_path = f"{installed_at}/ffprobe" if psutil.WINDOWS else "ffprobe"
+    command = f"{ffprobe_path} -v error -select_streams v:0 -show_entries stream=r_frame_rate -of default=noprint_wrappers=1:nokey=1 {VIDEO}"
 
     process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     output, error = process.communicate()
@@ -205,7 +211,6 @@ if __name__ in "__main__":
     print(VIDEO_RATE)
 
     # 预设原视频帧文件夹/处理帧文件夹
-    installed_at = Path(__file__).resolve().parent
     tmp_frames_folder = f"{installed_at}/tmp_frames"
     out_frames_folder = f"{installed_at}/out_frames"
     if not os.path.exists(tmp_frames_folder):
@@ -213,7 +218,9 @@ if __name__ in "__main__":
     if not os.path.exists(out_frames_folder):
         os.mkdir(out_frames_folder)
 
-    os.system(f"ffmpeg -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
+    ffmpeg_path = f"{installed_at}/ffmpeg" if psutil.WINDOWS else "ffmpeg"
+
+    os.system(f"{ffmpeg_path} -i {VIDEO} -qscale:v 1 -qmin 1 -qmax 1 -vsync 0 {installed_at}/tmp_frames/frame%08d.jpg")
     processors = frame_transfer_multiprocessor(input_folder=tmp_frames_folder,
                                                output_folder=out_frames_folder,
                                                process_num=PROCESS_NUM,
@@ -221,7 +228,7 @@ if __name__ in "__main__":
                                                bg_color=BG_COLOR,
                                                mosaic=MOSAIC)
 
-    os.system(f"ffmpeg -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p {video_path.parent}/out_{video_path.name}")
+    os.system(f"{ffmpeg_path} -r {VIDEO_RATE} -i {installed_at}/out_frames/out_frame%08d.jpg -i {VIDEO} -map 0:v:0 -map 1:a:0 -c:a copy -c:v libx264 -pix_fmt yuv420p {video_path.parent}/out_{video_path.name}")
 
     if DELETE_FRAMES_AFTER_PROCESSED:
         for tmp_frame in [f"{tmp_frames_folder}/{file}" for file in os.listdir(tmp_frames_folder)]:

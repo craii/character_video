@@ -35,11 +35,10 @@ def long_perform(VIDEO, TEXT_COLOR, BG_COLOR, MOSAIC, PROCESS_NUM, DELETE_FRAMES
 
 layout = [
     [sg.Text('选择：'), sg.InputText(key='VIDEO_OR_IMAGE', enable_events=True), sg.FilesBrowse(button_text='选择文件')],
-    [sg.Text('文字颜色：'), sg.InputText(key='TEXT_COLOR', size=(10,1)), sg.ColorChooserButton('选择颜色')],
-    [sg.Text('背景颜色：'), sg.InputText(key='BG_COLOR', size=(10,1)), sg.ColorChooserButton('选择颜色')],
-    [sg.Checkbox('使用马', key='MOSAIC')],
+    [sg.Text('文字颜色：'), sg.InputText(key='TEXT_COLOR', default_text="auto", size=(10,1)), sg.ColorChooserButton('选择颜色')],
+    [sg.Text('背景颜色：'), sg.InputText(key='BG_COLOR', default_text="white", size=(10,1)), sg.ColorChooserButton('选择颜色')],
     [sg.Text('进程数：'), sg.InputText(key='PROCESS_NUM')],
-    [sg.Checkbox('处理后删除帧', key='DELETE_FRAMES_AFTER_PROCESSED')],
+    [sg.Checkbox('处理后删除帧', key='DELETE_FRAMES_AFTER_PROCESSED'), sg.Checkbox('使用马', key='MOSAIC')],
     [sg.Button('开始', key='START')]
 ]
 
