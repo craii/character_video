@@ -29,20 +29,24 @@ def long_perform(VIDEO, TEXT_COLOR, BG_COLOR, MOSAIC, PROCESS_NUM, DELETE_FRAMES
     DELETE_FRAMES_AFTER_PROCESSED = args.DELETE_FRAMES_AFTER_PROCESSED
     :return:
     '''
-    return os.system(f"/Users/eliascheung/Documents/pythonscripts/pic_2_char/venv/bin/python /Users/eliascheung/Documents/pythonscripts/pic_2_char/video_to_char.py --VIDEO {VIDEO} --TEXT_COLOR '{TEXT_COLOR}' --BG_COLOR '{BG_COLOR}' --MOSAIC {MOSAIC} --PROCESS_NUM {PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {DELETE_FRAMES_AFTER_PROCESSED}")
+    installed_path = Path(__file__).resolve().parent
+    command_win = f"{installed_path}/venv/Scripts/python.exe {installed_path}/video_to_char.py --VIDEO {VIDEO} --TEXT_COLOR {TEXT_COLOR} --BG_COLOR {BG_COLOR} --MOSAIC {MOSAIC} --PROCESS_NUM {PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {DELETE_FRAMES_AFTER_PROCESSED}"
+    command_mac = f"{installed_path}/venv/bin/python {installed_path}/video_to_char.py --VIDEO {VIDEO} --TEXT_COLOR '{TEXT_COLOR}' --BG_COLOR '{BG_COLOR}' --MOSAIC {MOSAIC} --PROCESS_NUM {PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {DELETE_FRAMES_AFTER_PROCESSED}"
+    command = command_win if psutil.WINDOWS else command_mac
+    return os.system(command)
 
 
 
 layout = [
-    [sg.Text('选择：'), sg.InputText(key='VIDEO_OR_IMAGE', enable_events=True), sg.FilesBrowse(button_text='选择文件')],
-    [sg.Text('文字颜色：'), sg.InputText(key='TEXT_COLOR', default_text="auto", size=(10,1)), sg.ColorChooserButton('选择颜色')],
-    [sg.Text('背景颜色：'), sg.InputText(key='BG_COLOR', default_text="white", size=(10,1)), sg.ColorChooserButton('选择颜色')],
-    [sg.Text('进程数：'), sg.InputText(key='PROCESS_NUM')],
-    [sg.Checkbox('处理后删除帧', key='DELETE_FRAMES_AFTER_PROCESSED'), sg.Checkbox('使用马', key='MOSAIC')],
+    [sg.Text('选择视频：'), sg.InputText(key='VIDEO_OR_IMAGE', enable_events=True), sg.FilesBrowse(button_text='选择文件')],
+    [sg.Text('文字颜色：'), sg.InputText(key='TEXT_COLOR', default_text="auto", size=(10,1)), sg.ColorChooserButton('选择颜色', key='SELECT_T_COLOR')],
+    [sg.Text('背景颜色：'), sg.InputText(key='BG_COLOR', default_text="white", size=(10,1)), sg.ColorChooserButton('选择颜色', key='SELECT_B_COLOR')],
+    [sg.Text('进程数：'), sg.InputText(default_text="10", key='PROCESS_NUM')],
+    [sg.Checkbox('转换后删除帧', default=True, key='DELETE_FRAMES_AFTER_PROCESSED'), sg.Checkbox('马赛克化', key='MOSAIC')],
     [sg.Button('开始', key='START')]
 ]
 
-window = sg.Window('数据分析，清洗表格', layout)
+window = sg.Window('视频转字符画', layout)
 
 while True:
     event, values = window.read()
