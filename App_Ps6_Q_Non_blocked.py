@@ -21,29 +21,14 @@ def kill_python_processes():
             pass
 
 
-def long_perform(VIDEO, TEXT_COLOR, BG_COLOR, MOSAIC, PROCESS_NUM, DELETE_FRAMES_AFTER_PROCESSED):
-    '''
-    VIDEO = args.VIDEO
-    TEXT_COLOR = args.TEXT_COLOR  # 如果是auto，则自动计算颜色，提取自原视频
-    BG_COLOR = args.BG_COLOR
-    MOSAIC = args.MOSAIC
-    PROCESS_NUM = args.PROCESS_NUM
-    DELETE_FRAMES_AFTER_PROCESSED = args.DELETE_FRAMES_AFTER_PROCESSED
-    :return:
-    '''
-    installed_path = Path(__file__).resolve().parent
-    command_win = f"{installed_path}/venv/Scripts/python.exe {installed_path}/video_to_char.py --VIDEO {VIDEO} --TEXT_COLOR {TEXT_COLOR} --BG_COLOR {BG_COLOR} --MOSAIC {MOSAIC} --PROCESS_NUM {PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {DELETE_FRAMES_AFTER_PROCESSED}"
-    command_mac = f"{installed_path}/venv/bin/python {installed_path}/video_to_char.py --VIDEO {VIDEO} --TEXT_COLOR '{TEXT_COLOR}' --BG_COLOR '{BG_COLOR}' --MOSAIC {MOSAIC} --PROCESS_NUM {PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {DELETE_FRAMES_AFTER_PROCESSED}"
-    command = command_win if psutil.WINDOWS else command_mac
-    return os.system(command)
-
-
 class WorkerSignals(QObject):
-    finished = Signal()
+    finished = Signal(str)
+    error = Signal(str)
 
 class LongPerformTask(QRunnable):
     def __init__(self, VIDEO, TEXT_COLOR, BG_COLOR, MOSAIC, PROCESS_NUM, DELETE_FRAMES_AFTER_PROCESSED):
         super(LongPerformTask, self).__init__()
+        self.signals = WorkerSignals()
         self.VIDEO = VIDEO
         self.TEXT_COLOR = TEXT_COLOR
         self.BG_COLOR = BG_COLOR
@@ -52,11 +37,15 @@ class LongPerformTask(QRunnable):
         self.DELETE_FRAMES_AFTER_PROCESSED = DELETE_FRAMES_AFTER_PROCESSED
 
     def run(self):
-        installed_path = Path(__file__).resolve().parent
-        command_win = f"{installed_path}/venv/Scripts/python.exe {installed_path}/video_to_char.py --VIDEO {self.VIDEO} --TEXT_COLOR {self.TEXT_COLOR} --BG_COLOR {self.BG_COLOR} --MOSAIC {self.MOSAIC} --PROCESS_NUM {self.PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {self.DELETE_FRAMES_AFTER_PROCESSED}"
-        command_mac = f"{installed_path}/venv/bin/python {installed_path}/video_to_char.py --VIDEO {self.VIDEO} --TEXT_COLOR '{self.TEXT_COLOR}' --BG_COLOR '{self.BG_COLOR}' --MOSAIC {self.MOSAIC} --PROCESS_NUM {self.PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {self.DELETE_FRAMES_AFTER_PROCESSED}"
-        command = command_win if psutil.WINDOWS else command_mac
-        os.system(command)
+        try:
+            installed_path = Path(__file__).resolve().parent
+            command_win = f"{installed_path}/venv_win/Scripts/python.exe {installed_path}/video_to_char.py --VIDEO {self.VIDEO} --TEXT_COLOR {self.TEXT_COLOR} --BG_COLOR {self.BG_COLOR} --MOSAIC {self.MOSAIC} --PROCESS_NUM {self.PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {self.DELETE_FRAMES_AFTER_PROCESSED}"
+            command_mac = f"{installed_path}/venv/bin/python {installed_path}/video_to_char.py --VIDEO {self.VIDEO} --TEXT_COLOR '{self.TEXT_COLOR}' --BG_COLOR '{self.BG_COLOR}' --MOSAIC {self.MOSAIC} --PROCESS_NUM {self.PROCESS_NUM} --DELETE_FRAMES_AFTER_PROCESSED {self.DELETE_FRAMES_AFTER_PROCESSED}"
+            command = command_win if psutil.WINDOWS else command_mac
+            result = os.system(command)
+            self.signals.finished.emit(f"{result}")
+        except Exception as e:
+            self.signals.error.emit(f"{e}")
 
 class VideoToASCIIConverter(QMainWindow):
     def __init__(self):
@@ -157,7 +146,18 @@ class VideoToASCIIConverter(QMainWindow):
         # Create a QRunnable
         long_perform_task = LongPerformTask(video_or_image, text_color, bg_color, mosaic, process_num, delete_frames_after_processed)
         # Put the task into the thread pool to run
+        long_perform_task.signals.finished.connect(self.result)
+        long_perform_task.signals.error.connect(self.error)
+
         QThreadPool.globalInstance().start(long_perform_task)
+
+    def result(self, s):
+        print(f"运行结果退出码:{s}")
+        kill_python_processes()
+
+    def error(self, s):
+        print(f"发生错误:{s}")
+
 
 if __name__ == "__main__":
     app = QApplication(sys.argv)
