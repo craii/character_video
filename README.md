@@ -4,7 +4,7 @@
 # manual
 ## step 1
 创建虚拟环境：
-```python -m venv ```python -m venv venv_win``````
+```python -m venv venv_win``````
 
 启动虚拟环境：
 win: ```.\venv_win\Scripts\activate```
