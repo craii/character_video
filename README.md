@@ -5,7 +5,7 @@
 ## step 1
 创建虚拟环境：
 
-```python -m venv venv_win``````
+```python -m venv venv_win```
 
 启动虚拟环境：
 
@@ -24,7 +24,9 @@ install ffmpeg
 下载地址 [ffmpeg](https://www.ffmpeg.org/download.html) 下载之后将 ffmpeg.exe, ffprobe.exe (macOS则是：ffmpeg, ffprobe， 或通过homebrew安装)放到本项目根目录下。如果你已经在使用ffmpeg并且已经添加到 path，可跳过此步骤
 
 ## step 4
-check video_to_char.py, modify the "VIDEO" and run ```python video_to_char.py ```
+运行： ```python video_to_char.py --VIDEO "test.MP4"```
+
+查看其它可用参数: ```python video_to_char.py -h```
 
 ## result
 | original| result |
