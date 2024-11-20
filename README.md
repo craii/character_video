@@ -8,6 +8,7 @@
 
 启动虚拟环境：
 win: ```.\venv_win\Scripts\activate```
+
 macOS: ```source ./venv_win/bin/activate```
 
 ## step 2
