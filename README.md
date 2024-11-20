@@ -1,5 +1,6 @@
 # character_video
  transfer a normal video frames to character ones 
+ 可指定字符颜色和背景颜色，也可自动计算
 
 # manual
 ## step 1
